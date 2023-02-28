@@ -36,8 +36,9 @@ class RNNOnly(nn.Module):
         self.input_size = input_size
         self.hidden_size = hidden_size
         self.num_layers = num_layers
+        self.LSTM = LSTM
 
-        if not LSTM:
+        if not self.LSTM:
             self.rnn = nn.RNN(input_size=self.input_size,
                                   hidden_size=self.hidden_size,
                                   num_layers=self.num_layers,
@@ -57,16 +58,20 @@ class RNNOnly(nn.Module):
         self.D=1
         if bidirectional:
             self.D = 2
-        self.hidden = torch.zeros(self.D*num_layers,batch_size, hidden_size)
+
+        self.hidden = torch.zeros(self.D * num_layers, batch_size, hidden_size)
+        if self.LSTM:
+            self.hidden = (torch.zeros(self.D * num_layers, batch_size, hidden_size),torch.zeros(self.D * num_layers, batch_size, hidden_size))
+
 
 
     def forward(self, input):
 
-        # batch_size = 1
         out, self.hidden = self.rnn(input, self.hidden)     # out.shape = (seq_length, batch_size, hidden_size)
         out = out.reshape(-1, self.hidden_size)
         # out.shape = (seq_length*batch_size, hidden_size) -> proper shape for input to self.linear
-        out = self.linear(out)      # out.shape = (seq_length*batch_size, output_size)
+        out = self.linear(out)
+        # out = torch.sigmoid(out)     # out.shape = (seq_length*batch_size, output_size)
         # output = out.unsqueeze(dim=1)   # Returns a new tensor with a dimension of size one inserted at the specified position.
 
         return out
