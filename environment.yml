@@ -15,6 +15,9 @@ dependencies:
   - ipython
   - pip
   - pandas
+  - scikit-learn
+  - pip:
+      - torchmetrics
 
 
 
