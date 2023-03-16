@@ -12,8 +12,10 @@ from src.data.input_output import n_batches, time_steps, n_features, neural, beh
 dt = 100
 time = np.array([1000 + i * dt for i in range(time_steps)])
 
-model = RNNSLP(input_size_dynamic=n_features, input_size_static=1, output_size=1, batch_size=n_batches, LSTM=False,
-               bidirectional=False, dropout=0.1)
+model = RNNSLP(input_size_dynamic=n_features, input_size_static=1, output_size=1, batch_size=n_batches, LSTM=True,
+               bidirectional=True, dropout=0.1)
+
+# input shape time_steps, n_batches, n_features
 
 train_idx_neural = np.arange(np.round(0.8 * time_steps), dtype=int)
 test_idx_neural = np.arange(1 + train_idx_neural[-1], time_steps)
@@ -36,7 +38,7 @@ optimizer_grouped_parameters = [
 
 optimizer = torch.optim.Adam(optimizer_grouped_parameters)
 
-n_epochs = 100
+n_epochs = 200
 min_valid_loss = np.inf
 
 train_loss = []
@@ -78,7 +80,9 @@ for e in range(n_epochs):
         # Saving State Dict
         torch.save(model.state_dict(), 'saved_model.pt')
         r2score = R2Score()
-        for batch in range(n_batches):
+        if e % 10 == 0:
+            batch = np.random.randint(0, n_batches)
+            # for batch in range(n_batches):
             r2 = r2score(mov_neural_test_pred[:-1,batch,:].reshape(-1,1), mov_neural_test[:,batch,:].reshape(-1,1))
             plt.plot(time_test / 1000, mov_neural_test_pred[:-1,batch,:].reshape(-1,1).detach().numpy(), label='predicted')
             plt.plot(time_test / 1000, mov_neural_test[:,batch,:].reshape(-1,1).detach().numpy(), label='test data', alpha=0.5)
@@ -88,6 +92,18 @@ for e in range(n_epochs):
             plt.ylabel('Grip force', fontsize=15)
             plt.legend()
             plt.show()
+
+
+for batch in range(n_batches):
+    r2 = r2score(mov_neural_test_pred[:-1,batch,:].reshape(-1,1), mov_neural_test[:,batch,:].reshape(-1,1))
+    plt.plot(time_test / 1000, mov_neural_test_pred[:-1,batch,:].reshape(-1,1).detach().numpy(), label='predicted')
+    plt.plot(time_test / 1000, mov_neural_test[:,batch,:].reshape(-1,1).detach().numpy(), label='test data', alpha=0.5)
+    plt.title('Epoch {}, batch {}, Training Loss: {:.4f}, \nValidation Loss: {:.4f}, Validation r^2: {:.4f}'.format
+              (e + 1, batch, train_loss[-1], valid_loss[-1], r2), fontsize=15)
+    plt.xlabel('Time [s]', fontsize=15)
+    plt.ylabel('Grip force', fontsize=15)
+    plt.legend()
+    plt.show()
 
 plt.plot(np.arange(0, n_epochs), train_loss, label='training')
 plt.plot(np.arange(0, n_epochs), valid_loss, label='validation')
