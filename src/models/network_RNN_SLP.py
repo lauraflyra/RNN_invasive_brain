@@ -29,8 +29,8 @@ class RNNSLP(nn.Module):
         self.output_size = output_size
         self.LSTM = LSTM
 
-        self.hidden_size_1 = 128
-        self.hidden_size_2 = 64
+        self.hidden_size_1 = 64
+        self.hidden_size_2 = 32
 
         self.D = 1
         if bidirectional:
@@ -60,7 +60,7 @@ class RNNSLP(nn.Module):
                                  bidirectional=bidirectional,
                                  dropout=dropout)
 
-            self.rnn_2 = nn.LSTM(input_size=self.hidden_size_1,
+            self.rnn_2 = nn.LSTM(input_size=self.hidden_size_1*self.D,
                                  hidden_size=self.hidden_size_2,
                                  num_layers=self.num_layers,
                                  bidirectional=bidirectional,
@@ -73,13 +73,13 @@ class RNNSLP(nn.Module):
                              torch.zeros(self.D*self.num_layers, batch_size, self.hidden_size_2))
 
 
-        self.static = nn.Linear(self.input_size_static, self.hidden_size_2)
+        self.static = nn.Linear(self.input_size_static, self.hidden_size_2*self.D)
         self.relu = nn.ReLU()
 
         # Combine layers - RNN + SLP
-        self.combined_layer = nn.Linear(self.hidden_size_2, self.hidden_size_2)
+        self.combined_layer = nn.Linear(self.hidden_size_2*self.D, self.hidden_size_2*self.D)
 
-        self.output = nn.Linear(self.hidden_size_2, self.output_size)
+        self.output = nn.Linear(self.hidden_size_2*self.D, self.output_size)
         self.sigmoid = torch.nn.Sigmoid()
 
         # create parameter groups for optimization
@@ -98,7 +98,7 @@ class RNNSLP(nn.Module):
         out_static_temp = self.static(input_static)
         out_static = self.relu(out_static_temp)
 
-        combined_input = torch.cat((out_rnn_2, out_static.reshape(1,-1,self.hidden_size_2)), axis=0)
+        combined_input = torch.cat((out_rnn_2, out_static.reshape(1,-1,self.hidden_size_2*self.D)), axis=0)
 
         out_combined_temp = self.combined_layer(combined_input)
         out_combined = self.relu(out_combined_temp)
