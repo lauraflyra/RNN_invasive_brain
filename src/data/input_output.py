@@ -1,6 +1,7 @@
 import pandas as pd
 import numpy as np
 import torch
+import math
 
 '''
 Read processed time series of FFT features, movement traces and updrs. Structure such that FFT and updrs can be
@@ -32,19 +33,32 @@ data = []
 updrs = []
 behavior = []
 
+
+
 for idx, sub in enumerate(sub_list):
-    for key in df_cohort[sub][best_ch_list[idx]].keys():
-        if "run-0_" in key:
-            # take only the ones that have run-0 with more than 3 minutes, i.e shape > (1800,7)
-            if df_cohort[sub][best_ch_list[idx]][key]['data'].shape[0] >= 2400:
-                updrs.append(
-                    df_updrs[(df_updrs["cohort"] == cohort) & (df_updrs["sub"] == sub)]["UPDRS_total"].tolist())
-                # take the second and third minutes of the recordings
-                data.append(df_cohort[sub][best_ch_list[idx]][key]['data'][600:2400, :])
-                behavior.append(df_cohort[sub][best_ch_list[idx]][key]['label'][600:2400])
+    temp_data = []
+    temp_behavior = []
+    updrs_score = df_updrs[(df_updrs["cohort"] == cohort) & (df_updrs["sub"] == sub)]["UPDRS_total"].tolist()
+    if updrs_score[0] <= 50:
+        for key in df_cohort[sub][best_ch_list[idx]].keys():
+            temp_data.extend(df_cohort[sub][best_ch_list[idx]][key]['data'])
+            temp_behavior.extend(df_cohort[sub][best_ch_list[idx]][key]['label'])
+        if len(temp_data) >= 6000 and not math.isnan(updrs_score[0]):
+            updrs.append(updrs_score)
+            data.append(temp_data[:6000])
+            behavior.append(temp_behavior[:6000])
+
+        # if "run-0_" in key:
+        #     # take only the ones that have run-0 with more than 3 minutes, i.e shape > (1800,7)
+        #     if df_cohort[sub][best_ch_list[idx]][key]['data'].shape[0] >= 2400:
+        #         updrs.append(
+        #             df_updrs[(df_updrs["cohort"] == cohort) & (df_updrs["sub"] == sub)]["UPDRS_total"].tolist())
+        #         # take the second and third minutes of the recordings
+        #         data.append(df_cohort[sub][best_ch_list[idx]][key]['data'][600:2400, :])
+        #         behavior.append(df_cohort[sub][best_ch_list[idx]][key]['label'][600:2400])
 
 # input should be in shape (time_steps, n_batches, n_features)
-
+# TODO: it is still taking the updrs nan!!
 updrs = torch.from_numpy(np.asarray(updrs).reshape(-1,1)).float()
 data = np.asarray(data)
 n_batches, time_steps, n_features = data.shape
